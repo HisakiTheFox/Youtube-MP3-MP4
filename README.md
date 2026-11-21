@@ -1,4 +1,4 @@
-# YouTube Playlist Downloader
+# YouTube Playlist - Audio and Video Downloader
 ## Only tested on Visual Studio Code
 
 A small interactive Python script that downloads every video of a YouTube playlist in the best available quality, built on [`pytubefix`](https://github.com/JuanBindez/pytubefix). Optionally merges audio and video into a single MP4, or converts the audio track to MP3, using `ffmpeg`.
