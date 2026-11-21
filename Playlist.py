@@ -21,7 +21,17 @@ def pick_streams(yt):
     return audio, video
 
 
-def download_video(url, folder, index, merge):
+def convert_to_mp3(audio_path, mp3_path):
+    subprocess.run(
+        ['ffmpeg', '-y', '-loglevel', 'error',
+         '-i', audio_path,
+         '-vn', '-c:a', 'libmp3lame', '-q:a', '0',  # highest VBR quality
+         mp3_path],
+        check=True,
+    )
+
+
+def download_video(url, folder, index, merge, mp3):
     yt = YouTube(url, on_progress_callback=on_progress)
     title = safe_filename(yt.title)
     print(f'\n[{index}] {yt.title}')
@@ -43,12 +53,17 @@ def download_video(url, folder, index, merge):
         os.remove(audio_path)
         os.remove(video_path)
         print('  Merged into a single file.')
+    elif mp3:
+        mp3_path = os.path.join(folder, f'{index:03d}_{title}_audio.mp3')
+        convert_to_mp3(audio_path, mp3_path)
+        os.remove(audio_path)
+        print('  Audio converted to MP3, video saved separately.')
     else:
-        print('  Audio and video saved as separate files.')
+        print('  Audio (m4a) and video saved as separate files.')
 
 
 def ask_yes_no(prompt, default=True):
-    suffix = ' [Y/n]: ' if default else ' [y/N]: '
+    suffix = ' [Y/N]: ' if default else ' [Y/N]: '
     answer = input(prompt + suffix).strip().lower()
     if not answer:
         return default
@@ -59,9 +74,14 @@ def main():
     playlist_url = input('Enter the YouTube playlist URL: ').strip()
     merge = ask_yes_no('Merge audio and video into a single file?')
 
-    if merge and not shutil.which('ffmpeg'):
-        print('ffmpeg not found: files will be saved separately.')
+    mp3 = False
+    if not merge:
+        mp3 = ask_yes_no('Convert the separate audio file to MP3?', default=False)
+
+    if (merge or mp3) and not shutil.which('ffmpeg'):
+        print('ffmpeg not found: merge and MP3 conversion disabled.')
         merge = False
+        mp3 = False
 
     pl = Playlist(playlist_url)
     folder = safe_filename(pl.title)
@@ -73,7 +93,7 @@ def main():
     failed = []
     for i, url in enumerate(urls, start=1):
         try:
-            download_video(url, folder, i, merge)
+            download_video(url, folder, i, merge, mp3)
         except Exception as e:
             print(f'  ERROR on {url}: {e}')
             failed.append(url)
