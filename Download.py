@@ -1,12 +1,14 @@
 from pytubefix import YouTube
 from pytubefix.cli import on_progress
 
-url = 'https://www.youtube.com/watch?v=LMda9kzKTJc'
+url = input('Enter the YouTube video URL: ').strip()
+resolution = '1080p'
+
 yt = YouTube(url, on_progress_callback=on_progress)
 
 
 def itags(resolution='1080p'):
-    # miglior audio (bitrate più alto)
+    # best audio (highest bitrate)
     audio_stream = (
         yt.streams.filter(only_audio=True)
         .order_by('abr')
@@ -14,7 +16,7 @@ def itags(resolution='1080p'):
         .first()
     )
 
-    # miglior video alla risoluzione richiesta, qualunque fps
+    # best video at the requested resolution, any fps
     video_stream = (
         yt.streams.filter(res=resolution, only_video=True)
         .order_by('fps')
@@ -22,14 +24,12 @@ def itags(resolution='1080p'):
         .first()
     )
 
-    # se la risoluzione non esiste, prendi la più alta disponibile
+    # if the resolution doesn't exist, pick the highest available
     if video_stream is None:
-        print(f'{resolution} non disponibile, uso la risoluzione massima.')
-        video_stream = (
-            yt.streams.filter(only_video=True)
-            .order_by('resolution')
-            .desc()
-            .first()
+        print(f'{resolution} not available, using the maximum resolution.')
+        video_stream = max(
+            yt.streams.filter(only_video=True),
+            key=lambda s: (int(s.resolution[:-1]) if s.resolution else 0, s.fps or 0),
         )
 
     print(f'Video: {video_stream.resolution} {video_stream.fps} FPS')
@@ -37,8 +37,8 @@ def itags(resolution='1080p'):
     return audio_stream.itag, video_stream.itag
 
 
-audio, video = itags('720p')
+audio, video = itags(resolution)
 
-# nomi diversi per non sovrascrivere i file
+# different prefixes so the files don't overwrite each other
 yt.streams.get_by_itag(audio).download(filename_prefix='audio_')
 yt.streams.get_by_itag(video).download(filename_prefix='video_')
